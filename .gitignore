@@ -1,0 +1,11 @@
+venv/
+rag_db/
+uploads/
+watched/
+reports/
+__pycache__/
+*.pyc
+.env
+*.xlsx
+*.csv
+*.txt
