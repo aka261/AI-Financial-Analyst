@@ -1,0 +1,20 @@
+# k8s/service.yaml
+# -----------------
+# Kubernetes Service that exposes the application to the internet.
+# LoadBalancer type creates a Google Cloud Load Balancer automatically
+# and gives you a public IP address.
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: financial-analyst-service
+  labels:
+    app: financial-analyst
+spec:
+  type: LoadBalancer
+  selector:
+    app: financial-analyst
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 5000

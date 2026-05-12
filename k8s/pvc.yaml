@@ -1,0 +1,37 @@
+# k8s/pvc.yaml
+# -------------
+# Persistent Volume Claims for ChromaDB and reports storage.
+# Without this, all data is lost every time a pod restarts.
+# PVCs give the pod a persistent disk that survives restarts.
+
+# PVC for ChromaDB RAG database
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: rag-pvc
+  labels:
+    app: financial-analyst
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+  storageClassName: standard-rwo
+
+---
+
+# PVC for auto-generated reports
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: reports-pvc
+  labels:
+    app: financial-analyst
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: standard-rwo

@@ -1,0 +1,69 @@
+# k8s/deployment.yaml
+# --------------------
+# Kubernetes Deployment for the Financial Analyst application.
+# Tells Kubernetes how many pods to run and how to run them.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: financial-analyst-deployment
+  labels:
+    app: financial-analyst
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: financial-analyst
+  template:
+    metadata:
+      labels:
+        app: financial-analyst
+    spec:
+      containers:
+        - name: financial-analyst
+          image: asia-south1-docker.pkg.dev/aml-detection-495804/financial-analyst/app:latest
+          ports:
+            - containerPort: 5000
+          env:
+            - name: GROQ_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: groq-secret
+                  key: GROQ_API_KEY
+            - name: PORT
+              value: "5000"
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          volumeMounts:
+            - name: rag-storage
+              mountPath: /app/rag_db
+            - name: reports-storage
+              mountPath: /app/reports
+      volumes:
+        - name: rag-storage
+          persistentVolumeClaim:
+            claimName: rag-pvc
+        - name: reports-storage
+          persistentVolumeClaim:
+            claimName: reports-pvc

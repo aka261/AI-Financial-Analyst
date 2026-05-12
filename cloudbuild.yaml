@@ -1,0 +1,82 @@
+# cloudbuild.yaml
+# ----------------
+# Google Cloud Build pipeline.
+# Triggered automatically every time you push code to GitHub.
+# Builds Docker image, pushes to Artifact Registry, deploys to GKE.
+
+steps:
+
+  # Step 1 - Build the Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'asia-south1-docker.pkg.dev/aml-detection-495804/financial-analyst/app:$COMMIT_SHA'
+      - '-t'
+      - 'asia-south1-docker.pkg.dev/aml-detection-495804/financial-analyst/app:latest'
+      - '.'
+    id: 'build-image'
+
+  # Step 2 - Push image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'asia-south1-docker.pkg.dev/aml-detection-495804/financial-analyst/app:$COMMIT_SHA'
+    id: 'push-image'
+    waitFor: ['build-image']
+
+  # Step 3 - Push latest tag
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'asia-south1-docker.pkg.dev/aml-detection-495804/financial-analyst/app:latest'
+    id: 'push-latest'
+    waitFor: ['build-image']
+
+  # Step 4 - Get GKE credentials
+  - name: 'gcr.io/cloud-builders/kubectl'
+    args:
+      - 'get'
+      - 'nodes'
+    env:
+      - 'CLOUDSDK_COMPUTE_REGION=asia-south1'
+      - 'CLOUDSDK_CONTAINER_CLUSTER=financial-analyst-cluster'
+    id: 'get-credentials'
+    waitFor: ['push-image']
+
+  # Step 5 - Deploy to Kubernetes
+  - name: 'gcr.io/cloud-builders/kubectl'
+    args:
+      - 'set'
+      - 'image'
+      - 'deployment/financial-analyst-deployment'
+      - 'financial-analyst=asia-south1-docker.pkg.dev/aml-detection-495804/financial-analyst/app:$COMMIT_SHA'
+    env:
+      - 'CLOUDSDK_COMPUTE_REGION=asia-south1'
+      - 'CLOUDSDK_CONTAINER_CLUSTER=financial-analyst-cluster'
+    id: 'deploy'
+    waitFor: ['get-credentials', 'push-image']
+
+  # Step 6 - Verify deployment rolled out successfully
+  - name: 'gcr.io/cloud-builders/kubectl'
+    args:
+      - 'rollout'
+      - 'status'
+      - 'deployment/financial-analyst-deployment'
+      - '--timeout=300s'
+    env:
+      - 'CLOUDSDK_COMPUTE_REGION=asia-south1'
+      - 'CLOUDSDK_CONTAINER_CLUSTER=financial-analyst-cluster'
+    id: 'verify-rollout'
+    waitFor: ['deploy']
+
+# Store the built image in Artifact Registry
+images:
+  - 'asia-south1-docker.pkg.dev/aml-detection-495804/financial-analyst/app:$COMMIT_SHA'
+  - 'asia-south1-docker.pkg.dev/aml-detection-495804/financial-analyst/app:latest'
+
+# Build timeout
+timeout: '1200s'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
